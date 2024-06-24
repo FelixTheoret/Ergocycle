@@ -11,15 +11,13 @@ from PyQt5.QtGui import QFont, QPixmap
 from InstructionWindow import InstructionWindow
 from PIL import Image
 #import sys
-
-SCREEN_WIDTH = 1920
-SCREEN_HEIGTH = 1080
+from constants import *
 
 class DangerPopUp(QWidget):
     def __init__(self, init_parameters):
         super(DangerPopUp, self).__init__()
          ### 1.1. Instaurer la taille, la couleur de fond et le titre du de la fenêtre PopUp ###
-        self.setGeometry(300, 300, SCREEN_WIDTH/1.7, SCREEN_HEIGTH/1.8)
+        self.setGeometry(300, 300, SCREEN_WIDTH/1.7, SCREEN_HEIGHT/1.8)
         self.setWindowTitle("Averitissement")
         self.setStyleSheet("background-color: white;")
         self.initUI(init_parameters)

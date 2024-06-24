@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar 17 20:41:31 2022
-
-@author: Nicolas Pelletier-Côté
-"""
 
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
@@ -14,9 +8,7 @@ from PyQt5.QtCore import QTimer, QTime
 
 from ErrorMenu import ErrorMenu
 from StopMenu import StopMenu
-
-SCREEN_WIDTH = 1920
-SCREEN_HEIGTH = 1080
+from constants import *
 
 MIN_SPEED = 0
 MAX_SPEED = 200
@@ -28,7 +20,7 @@ class ActivityMenu(QWidget):
     def __init__(self, motor_parameters):
         super(ActivityMenu, self).__init__()
         
-        self.setGeometry(SCREEN_WIDTH, 30, SCREEN_WIDTH, SCREEN_HEIGTH)
+        self.setGeometry(SCREEN_WIDTH, 30, SCREEN_WIDTH, SCREEN_HEIGHT)
         self.setWindowTitle("Performances")
         self.setStyleSheet("background-color: white;")
         # self.button_dictionary = {}

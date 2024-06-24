@@ -5,7 +5,6 @@
 # from Menu import Menu
 # from Motor import Motor
 import numpy as np
-from Screen import Screen as Screen
 from StimulationScreen import StimulationScreen as StimulationScreen
 from MotorScreen import MotorScreen
 
@@ -13,6 +12,7 @@ from Parameters import Parameters
 from TestParameters import TestParameters
 from MotorParameters import MotorParameters
 from Motor import Motor
+from constants import *
 # from ReceiveDataClient import ReceiveDataClient # Décommenter lorsque la classe sera ajoutée au git
 import odrive
 #import numpy 
@@ -51,24 +51,26 @@ class Ergocycle():
     # Constuctor
     def __init__(self):
 
-        self.application = QApplication([])
+        if DEBUG_REHA == 0:
+            self.application = QApplication([])
 
-        self.motor_parameters = MotorParameters()
-        self.assistance_screen = MotorScreen(self.read_assistance_screen)
-        self.assistance_screen.manage_active_window(self.motor_parameters)
+            self.motor_parameters = MotorParameters()
+            self.assistance_screen = MotorScreen(self.read_assistance_screen)
+            self.assistance_screen.manage_active_window(self.motor_parameters)
 
-        self.stim_parameters = Parameters()
-        self.stim_test_parameters = TestParameters()
-        self.stimulation_screen = StimulationScreen(self.read_stimulation_screen)
-        self.stimulation_screen.manage_active_window(self.stim_parameters)
+            self.stim_parameters = Parameters()
+            self.stim_test_parameters = TestParameters()
+            self.stimulation_screen = StimulationScreen(self.read_stimulation_screen)
+            self.stimulation_screen.manage_active_window(self.stim_parameters)
+
+            self.thread_motor_control = threading.Thread(target=self.motor_control_function, args=(1,), daemon=True)
+            # self.thread_sensors = threading.Thread(target=self.sensors_function, args=(1,), daemon=True)
+            self.thread_stimulations = threading.Thread(target=self.stimulations_function, args=(1,), daemon=True)
+
         self.stimulation_signal = []
         self.stimulation_time = 0
-
-        self.thread_motor_control = threading.Thread(target=self.motor_control_function, args=(1,), daemon=True)
-        # self.thread_sensors = threading.Thread(target=self.sensors_function, args=(1,), daemon=True)
-        self.thread_stimulations = threading.Thread(target=self.stimulations_function, args=(1,), daemon=True)
-
-        self.stimulator = Stimulator(self.stimulation_signal, '/dev/ttyUSB0')
+        self.start_time = 0
+        self.stimulator = Stimulator(self.stimulation_signal, USB_DRIVE_PORT_PATH)
 
         self.stop_motor = False
         self.stop_sensors = False
@@ -78,10 +80,11 @@ class Ergocycle():
 
         self.motor_on = True
         self.stimulation_started = False
+
+        if DEBUG_REHA == 0:
+            self.motor = Motor('tsdz2', 0 , 0, 0, 0 , 0, 0, 0,0)
         
-        self.motor = Motor('tsdz2', 0 , 0, 0, 0 , 0, 0, 0,0)
-        
-        self.thread_motor_control.start()
+            self.thread_motor_control.start()
 
         # self.thread_motor_control.start()
         # self.thread_sensors.start()
@@ -110,13 +113,15 @@ class Ergocycle():
 
 
         #self.test_timer()
-
-        self.start_application()
+        if DEBUG_REHA == 0:
+            self.start_application()
 
         # self.assistance_screen.start_application()
         # self.stimulation_screen.start_stimulation_application()
 
         # sys.exit(self.application.exec_())
+        if DEBUG_REHA == 1:
+            self.stimulations_function("Jean")
 
     def motor_control_function(self, name):
         # logging.info("Thread %s: starting", name)
@@ -182,75 +187,45 @@ class Ergocycle():
 
     def stimulations_function(self, name): # S'il n'y a pas de commande à envoyer périodiquement, retirer ce thread
         # logging.info("Thread %s: starting", name)
+        matrice_history = [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]
 
-        matrice_0 = [[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]
+        mess_init = self.stimulator.initialise_connection()
+        if DEBUG_REHA == 1:
+            print(mess_init)
 
-        Stimulator.initialise_connection(self.stimulator)
-        #starttime = time.time()
+        self.start_time = time.time()
         timer = 0
-        timer_test = 0
+        fin_stimulation = 0
 
-        while(self.stop_stimulations == False and self.stop_motor == False):# and self.time <= self.stimulation_parameters.MAX_TIME
+        if DEBUG_REHA == 1:
+            # Rentrer les stimulations voulues (électrodes 1 et 3 défaillantes)
+            self.stimulator.matrice = [[10, 0, 10, 0, 10, 10, 10, 10], [10, 10, 10, 10, 10, 10, 10, 10],
+                                       [10, 10, 10, 10, 10, 10, 10, 10], [0, 1, 2, 3, 4, 5, 6, 7]]
+            # Rentrer le temsp du test en minute
+            self.stimulation_time = 30/60
+            self.stop_stimulations = False
+            self.stop_motor = False
+            self.stop_tests = True
 
-            if (self.stimulator.port.in_waiting>0):
-                     self.stimulator.calling_ACK()
+        while self.stop_stimulations is False and self.stop_motor is False:
+            if self.stimulator.port.in_waiting > 0:
+                print(self.stimulator.calling_ACK())
+            self.stimulator.send_watchdog()
 
-
-            while(timer_test<10.0 and self.stop_tests == True):
-
-
-                 print(timer_test, 'test timer')
-
-                 if(~(np.allclose(self.stimulator.matrice,matrice_0))):
-                        timer_test = round(time.time()-self.starttime,2)
-
-                        #print(self.stimulator.matrice, 'stimulation_signal update')
-                        #if(220=<read_angle=< 360 or 0=read_angle=<10):
-                        matrice_0 = self.stimulator.matrice
-                        Stimulator.stimulation_220_10(self.stimulator)
-                        time.sleep(1/self.stimulator.frequency[0])
-
-
-
-
-
-
-                 elif((np.allclose(self.stimulator.matrice,matrice_0))):
-                        timer_test = round(time.time()-self.starttime,2)
-                        Stimulator.stimulation_220_10(self.stimulator)
-                        time.sleep(1/self.stimulator.frequency[0])
-
-                 else:
-                    break
-
-            Stimulator.stop_stimulation(self.stimulator)
-            while(timer<(self.stimulation_time)*60 and self.stop_stimulations == False ): #and self.pause == True
-
-
-
-                if(~(np.allclose(self.stimulator.matrice,matrice_0))):
-                    timer = round(time.time()-self.starttime,2)
-
-                    #print(self.stimulator.matrice, 'stimulation_signal update')
-                    #if(220=<read_angle=< 360 or 0=read_angle=<10):
-                    matrice_0 = self.stimulator.matrice
-                    Stimulator.stimulation_220_10(self.stimulator)
-                    time.sleep(1/self.stimulator.frequency[0])
-
-
-                else:
-                    timer = round(time.time()-self.starttime,2)
-                    Stimulator.stimulation_220_10(self.stimulator)
-                    time.sleep(1/self.stimulator.frequency[0])
-
-
-
-
-                #print("(Ergocycle) Sending new stimulation data...")
-
+            while timer < self.stimulation_time * 60 and self.stop_stimulations is False: #and self.pause == True
+                if DEBUG_REHA_SHOW_COM == 1:
+                    print("Time :", round(timer, 3))
+                if not(np.allclose(self.stimulator.matrice, matrice_history)):
+                    matrice_history = self.stimulator.matrice
+                    self.stimulator.init_channel()
+                self.stimulator.start_channel()
+                self.stimulator.wait(1 / self.stimulator.frequency[0])
+                timer = time.time() - self.start_time
+                fin_stimulation = 1
+            if fin_stimulation == 1:
+                print("Stimulation finished")
+                fin_stimulation = 0
         # Remettre la matrice à 0
-
-
 
         print("(Ergocycle) Stopped stimulations thread")
         # self.thread_stimulations.join()
@@ -371,7 +346,7 @@ class Ergocycle():
             if self.stimulation_started == False:
                     self.thread_stimulations.start()
                     self.stimulation_started = True
-            self.starttime = time.time()
+            self.start_time = time.time()
             Stimulator.set_matrice(self.stimulator, self.stimulation_signal)
 
 
@@ -491,7 +466,7 @@ class Ergocycle():
                 if self.stimulation_started == False:
                     self.thread_stimulations.start()
                     self.stimulation_started = True
-                self.starttime = time.time()
+                self.start_time = time.time()
                 Stimulator.set_matrice(self.stimulator, self.stimulation_signal)
             else:
                 # self.stimulation_screen.current_menu.start_button.setEnabled(False)
@@ -981,16 +956,18 @@ class Ergocycle():
         # threading.Timer(1, test_timer).start()
 
     def command_assistance_screen(self, command, parameters):
+        # TODO
         print("TODO")
 
     #si command_parameter est egal a 1 , on modifie la force en fonction du vecteur force genere dans crankset
     def command_motor(self):
-    	print("TODO")
+        print("TODO")
 
     def start_application(self):
         sys.exit(self.application.exec_())
 
     #def command_stimulation_screen(self, command, parameters):
+        # TODO
         #print("TODO")
 
     #def read_crankset(self, commanded_parameter, value):

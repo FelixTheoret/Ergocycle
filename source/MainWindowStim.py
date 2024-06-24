@@ -1,8 +1,3 @@
-"""
-Created on Wed Feb 16 09:10:00 2022
-
-@author: Frédérique Leclerc
-"""
 
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import *
@@ -12,9 +7,7 @@ from InstructionWindow import InstructionWindow
 from StimulationWindow import StimulationWindow
 from Parameters import Parameters
 from DangerPopUp import DangerPopUp
-
-SCREEN_WIDTH = 1920
-SCREEN_HEIGTH = 1080 - 30
+from constants import *
 
 MIN_TRAINING_LENGTH = 1
 MAX_TRAINING_LENGTH = 120 
@@ -25,7 +18,7 @@ class MainWindowStim(QMainWindow):
     def __init__(self):
         super(MainWindowStim, self).__init__()
         ### 1.1. Instaurer la taille, la couleur de fond et le titre du de la fenêtre des tests ###
-        self.setGeometry(0, 30, SCREEN_WIDTH, SCREEN_HEIGTH)
+        self.setGeometry(0, 30, SCREEN_WIDTH, SCREEN_HEIGHT)
         self.setWindowTitle("Menu principal des stimulations électriques fonctionnelles")
         self.setStyleSheet("background-color: white;")
         init_parameters = Parameters()
